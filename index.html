@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ridz’ Risk Statement Builder</title>
+<style>
+:root{color-scheme:dark;--bg:#080d22;--panel:#101836;--ink:#eef0ff;--mute:#9aa3cf;--line:#26336b;--pac:#ffd400;
+  --vuln:#5cc8ff;--threat:#ff7ac0;--asset:#d6dcff;--impact:#5be37d;--conseq:#ffb347;--ok:#5be37d;--warn:#ff7a6b}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 48px}
+h1{font:700 1.55rem/1.2 "Courier New",ui-monospace,monospace;color:var(--pac);margin:8px 0 6px}
+.sub{color:var(--mute);margin:0 0 10px;max-width:60ch}
+.pellets{height:10px;margin:0 0 16px;background:radial-gradient(circle,var(--pac) 2.5px,transparent 3px) 0 50%/18px 10px repeat-x;opacity:.8}
+.sentence,.card{background:var(--panel);border:1px solid var(--line);border-bottom:4px solid #050818;border-radius:8px}
+.card{padding:20px}
+.sentence{position:sticky;top:0;z-index:5;margin-bottom:18px;padding:28px 20px 18px;font:1.25rem/1.75 Georgia,"Times New Roman",serif}
+.sentence::before{content:"";position:absolute;top:9px;left:14px;right:14px;height:9px;
+  background:radial-gradient(circle at 9px 4.5px,#25327a 0 5px,transparent 5.5px) 0 0/24px 9px repeat-x}
+.sentence .s{border-bottom:2px solid currentColor;padding-bottom:1px}
+.sentence .s.empty{opacity:.5;font-style:italic}
+.s[data-k=vuln]{color:var(--vuln)}.s[data-k=threat]{color:var(--threat)}.s[data-k=asset]{color:var(--asset)}
+.s[data-k=impact]{color:var(--impact)}.s[data-k=conseq]{color:var(--conseq)}
+.s.active{background:color-mix(in srgb,currentColor 18%,transparent)}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tabs button{font:inherit;padding:8px 14px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;cursor:pointer}
+.tabs button[aria-selected=true]{background:var(--pac);color:#080d22;border-color:var(--pac);font-weight:700}
+button:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--pac);outline-offset:2px}
+.progress{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.progress button{font:inherit;font-size:.85rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--mute);cursor:pointer}
+.progress button.done{color:var(--ok);border-color:var(--ok)}
+.progress button.cur{background:var(--pac);color:#080d22;border-color:var(--pac);font-weight:700}
+h2{font-size:1.15rem;margin:0 0 4px}
+.hint{color:var(--mute);margin:0 0 12px;font-size:.95rem}
+textarea{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);resize:vertical;min-height:70px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.chips button{font:inherit;font-size:.88rem;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.chips button:hover{border-color:var(--pac);color:var(--pac)}
+.warn{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent);font-size:.92rem}
+.warn::before{content:"⚠️ "}
+.tip{margin:12px 0 0;color:var(--mute);font-size:.9rem}
+.tip::before{content:"💡 "}
+.nav{display:flex;justify-content:space-between;margin-top:16px;gap:8px}
+.btn{font:inherit;font-weight:700;padding:9px 16px;border-radius:6px;border:1px solid var(--pac);border-bottom:3px solid #a68900;background:var(--pac);color:#080d22;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line);font-weight:400}
+.btn:disabled{opacity:.4;cursor:default}
+.found{display:grid;gap:8px;margin-top:14px}
+.row{display:flex;gap:10px;align-items:baseline;font-size:.95rem}
+.row b{min-width:130px}
+.ok{color:var(--ok)}.miss{color:var(--warn)}
+.rating{margin-top:14px;display:flex;gap:14px;flex-wrap:wrap;align-items:end}
+label{display:grid;gap:4px;font-size:.9rem;color:var(--mute)}
+select{font:inherit;padding:7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.badge{padding:6px 12px;border-radius:6px;font-weight:700;border:1px solid currentColor}
+.out{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center}
+</style>
+</head>
+<body>
+<main>
+  <h1>🟡 Ridz’ Risk Statement Builder 🧱</h1>
+  <p class="sub">Build a clear risk statement one piece at a time, or paste a rough sentence and see which pieces are missing.</p>
+
+  <div class="pellets" aria-hidden="true"></div>
+  <div class="sentence" id="sentence" aria-live="polite"></div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tabGuide" aria-selected="true">🧱 Guided builder</button>
+    <button role="tab" id="tabPaste" aria-selected="false">👻 Paste a sentence</button>
+  </div>
+
+  <section class="card" id="guide"></section>
+  <section class="card" id="paste" hidden>
+    <h2>Paste your rough risk sentence</h2>
+    <p class="hint">Example: hackers might steal customer data because passwords are weak.</p>
+    <textarea id="raw" placeholder="Type or paste here"></textarea>
+    <div class="nav"><span></span><button class="btn" id="analyze">🔍 Analyze sentence</button></div>
+    <div id="result"></div>
+  </section>
+
+  <div class="card" style="margin-top:18px">
+    <h2>🎯 Rate it (optional)</h2>
+    <div class="rating">
+      <label>Likelihood<select id="lik"><option value="0">Choose</option><option value="1">Low</option><option value="2">Medium</option><option value="3">High</option></select></label>
+      <label>Severity<select id="sev"><option value="0">Choose</option><option value="1">Low</option><option value="2">Medium</option><option value="3">High</option></select></label>
+      <span id="badge"></span>
+    </div>
+    <div class="out">
+      <button class="btn" id="copy">📋 Copy statement</button>
+      <button class="btn ghost" id="dl">💾 Download as Markdown</button>
+      <button class="btn ghost" id="reset">🔄 Start over</button>
+      <span id="msg" class="hint" role="status"></span>
+    </div>
+  </div>
+</main>
+
+<script>
+const S = {asset:'',threat:'',vuln:'',impact:'',conseq:''};
+const STEPS = [
+ {k:'asset',icon:'🧱',title:'What are you protecting?',hint:'Name the data, system, service or people at risk.',
+  chips:['customer database','company website','employee laptops','payment system','cloud storage'],
+  tip:'Be specific: "customer payment records" beats "data".'},
+ {k:'threat',icon:'👻',title:'Who or what could cause harm?',hint:'The actor or event. Not the weakness.',
+  chips:['an external attacker','a phishing email','ransomware','a malicious insider','a power outage'],
+  tip:'A threat is the actor or event. The weakness comes in the next step.'},
+ {k:'vuln',icon:'🔓',title:'Why could it happen?',hint:'The weakness that makes the threat possible. Write it as a short noun phrase.',
+  chips:['weak passwords','the absence of MFA','unpatched software','unencrypted data','inadequate security training'],
+  tip:'Use a noun phrase, like "the absence of MFA on admin accounts".'},
+ {k:'impact',icon:'💥',title:'What happens to the asset?',hint:'The direct effect on confidentiality, integrity or availability.',
+  chips:['loss of confidentiality','loss of integrity','loss of availability','data theft','extended outage'],
+  tip:'Impact is what happens to the asset (data leaked). Consequence is what it costs you.'},
+ {k:'conseq',icon:'🍒',title:'What does that mean for the business or people?',hint:'The cost: money, legal, trust, safety.',
+  chips:['regulatory fines','loss of customer trust','revenue loss','legal action','safety risk to staff'],
+  tip:'Name something you could put a cost or a headline on.'}
+];
+const WORDS = {
+ threat:['hacker','attacker','malware','ransomware','phishing','insider','employee','scammer','ddos','fraud','outage','flood','fire','disaster','supplier','thief','virus'],
+ vuln:['unpatched','weak','misconfigur','outdated','unencrypted','default password','no backup','no mfa','without mfa','lack of','not encrypted','open port','exposed','no monitoring','missing','shared password','reused'],
+ impact:['leak','stolen','steal','theft','breach','unavailable','corrupt','tamper','deleted','encrypted by','locked','unauthori','disclos','modified','destroy'],
+ conseq:['fine','lawsuit','penalt','revenue','reputation','trust','customer loss','cost','downtime','safety','injur','regulat','complian','legal','loss of business','brand'],
+ asset:['data','server','database','website','system','application','customer','laptop','network','account','record','cloud','service']
+};
+const VAGUE = ['bad','hacked','problem','issue','stuff','thing','things','something','somehow'];
+const LABEL = {asset:'Asset',threat:'Threat',vuln:'Vulnerability',impact:'Impact',conseq:'Consequence'};
+const PH = {asset:'[asset]',threat:'[threat]',vuln:'[vulnerability]',impact:'[impact]',conseq:'[consequence]'};
+let cur = 0;
+const $ = id => document.getElementById(id);
+const hit = (k,t) => WORDS[k].filter(w => t.toLowerCase().includes(w));
+
+function sentenceText(){
+  const g = k => S[k].trim().replace(/[.\s]+$/,'') || PH[k];
+  let t = `Due to ${g('vuln')}, ${g('threat')} could compromise ${g('asset')}, resulting in ${g('impact')} and ultimately leading to ${g('conseq')}.`;
+  return t.charAt(0).toUpperCase()+t.slice(1);
+}
+function renderSentence(){
+  const box = $('sentence'); box.textContent='';
+  const add = (txt,k) => {
+    const sp = document.createElement('span');
+    if(k){ sp.className='s'+(S[k].trim()?'':' empty')+(isGuide() && STEPS[cur].k===k?' active':''); sp.dataset.k=k;
+      sp.textContent = S[k].trim().replace(/[.\s]+$/,'') || PH[k]; }
+    else sp.textContent = txt;
+    box.append(sp);
+  };
+  add('Due to ');add(0,'vuln');add(', ');add(0,'threat');add(' could compromise ');add(0,'asset');
+  add(', resulting in ');add(0,'impact');add(' and ultimately leading to ');add(0,'conseq');add('.');
+  renderBadge();
+}
+const isGuide = () => !$('guide').hidden;
+
+function warnings(k,t){
+  const out=[]; t=t.trim(); if(!t) return out;
+  const w = t.toLowerCase().split(/\W+/);
+  const v = VAGUE.filter(x=>w.includes(x));
+  if(v.length) out.push(`"${v.join('", "')}" is vague. Say what exactly happened or what exactly is weak.`);
+  if(t.split(/\s+/).length<2) out.push('Add a few more words so a reader can picture it.');
+  if(k==='vuln' && hit('threat',t).length && !hit('vuln',t).length) out.push('This sounds like a threat (an actor or event). Describe the weakness instead, such as "no MFA".');
+  if(k==='threat' && hit('vuln',t).length && !hit('threat',t).length) out.push('This sounds like a weakness. Name who or what exploits it, such as "an external attacker".');
+  if(k==='impact' && hit('conseq',t).length && !hit('impact',t).length) out.push('This sounds like a business consequence. Impact is what happens to the asset, such as "customer data is leaked".');
+  if(k==='conseq' && hit('impact',t).length && !hit('conseq',t).length) out.push('This sounds like impact on the asset. Say what it costs: fines, downtime, lost trust.');
+  return out;
+}
+
+function renderGuide(){
+  const st = STEPS[cur], g = $('guide'); g.textContent='';
+  const prog = document.createElement('div'); prog.className='progress';
+  STEPS.forEach((s,i)=>{const b=document.createElement('button');b.textContent=s.icon+' '+LABEL[s.k];
+    b.className=(i===cur?'cur':(S[s.k].trim()?'done':''));b.onclick=()=>{cur=i;renderGuide();};prog.append(b);});
+  const h=document.createElement('h2');h.textContent=st.icon+' '+st.title;
+  const p=document.createElement('p');p.className='hint';p.textContent=st.hint;
+  const ta=document.createElement('textarea');ta.value=S[st.k];ta.setAttribute('aria-label',st.title);
+  const wr=document.createElement('div');
+  const chips=document.createElement('div');chips.className='chips';
+  st.chips.forEach(c=>{const b=document.createElement('button');b.textContent=c;
+    b.onclick=()=>{ta.value=c;ta.dispatchEvent(new Event('input'));ta.focus();};chips.append(b);});
+  const draw=()=>{wr.textContent='';warnings(st.k,ta.value).forEach(m=>{const d=document.createElement('div');d.className='warn';d.textContent=m;wr.append(d);});};
+  ta.oninput=()=>{S[st.k]=ta.value;draw();renderSentence();};
+  const tip=document.createElement('p');tip.className='tip';tip.textContent='Tip: '+st.tip;
+  const nav=document.createElement('div');nav.className='nav';
+  const back=document.createElement('button');back.className='btn ghost';back.textContent='◀ Back';back.disabled=cur===0;back.onclick=()=>{cur--;renderGuide();};
+  const next=document.createElement('button');next.className='btn';
+  next.textContent=cur===STEPS.length-1?'🏁 Review statement':'Next ▶';
+  next.onclick=()=>{if(cur<STEPS.length-1){cur++;renderGuide();}else{ $('copy').scrollIntoView({behavior:'smooth',block:'center'});}};
+  nav.append(back,next);
+  g.append(prog,h,p,ta,chips,wr,tip,nav);draw();renderSentence();ta.focus({preventScroll:true});
+}
+
+function analyze(){
+  const t=$('raw').value, res=$('result'); res.textContent='';
+  if(!t.trim()){res.textContent='Paste a sentence first.';return;}
+  const found={}, box=document.createElement('div'); box.className='found';
+  STEPS.forEach(s=>{
+    const m=[...new Set(hit(s.k,t))]; found[s.k]=m;
+    const r=document.createElement('div');r.className='row';
+    const b=document.createElement('b');b.textContent=s.icon+' '+LABEL[s.k];
+    const v=document.createElement('span');v.className=m.length?'ok':'miss';
+    v.textContent=m.length?'Found: '+m.join(', '):'Missing. '+s.hint;
+    r.append(b,v);box.append(r);
+  });
+  const missing=STEPS.filter(s=>!found[s.k].length);
+  const msg=document.createElement('p');
+  msg.textContent=missing.length
+   ? `You still need: ${missing.map(s=>LABEL[s.k].toLowerCase()).join(', ')}. The guided builder will ask for them next.`
+   : 'All five parts are present. Check each one in the guided builder to make it specific.';
+  const go=document.createElement('button');go.className='btn';go.textContent='🧱 Continue in guided builder';
+  go.onclick=()=>{
+    STEPS.forEach(s=>{if(found[s.k].length&&!S[s.k].trim()) S[s.k]=found[s.k].join(', ');});
+    const i=STEPS.findIndex(s=>!found[s.k].length); cur=i<0?0:i; showTab('guide');
+  };
+  res.append(box,msg,go);
+}
+
+function showTab(w){
+  const g=w==='guide'; $('guide').hidden=!g; $('paste').hidden=g;
+  $('tabGuide').setAttribute('aria-selected',g); $('tabPaste').setAttribute('aria-selected',!g);
+  if(g) renderGuide(); else renderSentence();
+}
+function rating(){const l=+$('lik').value,v=+$('sev').value;if(!l||!v)return null;
+  const s=l*v;return s>=6?['High','var(--warn)']:s>=3?['Medium','var(--conseq)']:['Low','var(--ok)'];}
+function renderBadge(){const b=$('badge');b.textContent='';const r=rating();
+  if(r){const e=document.createElement('span');e.className='badge';e.style.color=r[1];e.textContent='Risk level: '+({High:'🔴',Medium:'🟡',Low:'🟢'}[r[0]])+' '+r[0];b.append(e);}}
+function fullText(){const r=rating();return sentenceText()+(r?` (Risk level: ${r[0]})`:'');}
+function note(t){$('msg').textContent=t;setTimeout(()=>$('msg').textContent='',2500);}
+
+$('tabGuide').onclick=()=>showTab('guide');
+$('tabPaste').onclick=()=>showTab('paste');
+$('analyze').onclick=analyze;
+$('lik').onchange=$('sev').onchange=renderBadge;
+$('copy').onclick=async()=>{
+  const missing=STEPS.filter(s=>!S[s.k].trim()).map(s=>LABEL[s.k].toLowerCase());
+  if(missing.length){note('Still missing: '+missing.join(', '));return;}
+  try{await navigator.clipboard.writeText(fullText());note('Copied');}catch(e){note('Copy blocked. Select the sentence above and copy it.');}
+};
+$('dl').onclick=()=>{
+  const r=rating();
+  const md=`# Risk statement\n\n${sentenceText()}\n\n| Part | Detail |\n|---|---|\n`+
+    STEPS.map(s=>`| ${LABEL[s.k]} | ${S[s.k].trim()||'-'} |`).join('\n')+
+    `\n| Likelihood | ${$('lik').selectedOptions[0].text} |\n| Severity | ${$('sev').selectedOptions[0].text} |\n`+(r?`| Risk level | ${r[0]} |\n`:'');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));
+  a.download='risk-statement.md';a.click();URL.revokeObjectURL(a.href);
+};
+$('reset').onclick=()=>{Object.keys(S).forEach(k=>S[k]='');$('raw').value='';$('result').textContent='';
+  $('lik').value=$('sev').value='0';cur=0;showTab('guide');};
+showTab('guide');
+</script>
+</body>
+</html>
